@@ -980,6 +980,76 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
+// Media Sync Endpoint: Migrates local /uploads/ to Cloudinary
+app.post("/api/media/sync", async (req, res) => {
+  const { password } = req.body;
+  if (!(await checkAdminPassword(password))) {
+    return res.status(401).json({ error: "Unauthorized access denied." });
+  }
+
+  if (!useCloudinary) {
+    return res.status(400).json({ error: "Cloudinary is not configured. Please verify environment variables." });
+  }
+
+  try {
+    const contentRaw = fs.readFileSync(CONTENT_FILE, "utf-8");
+    const content = JSON.parse(contentRaw);
+    let migrationCount = 0;
+    const errors: string[] = [];
+
+    const migrateObject = async (obj: any) => {
+      for (const key in obj) {
+        if (typeof obj[key] === "string" && obj[key].startsWith("/uploads/")) {
+          const fileName = obj[key].replace("/uploads/", "");
+          const localPath = path.join(UPLOADS_DIR, fileName);
+          
+          if (fs.existsSync(localPath)) {
+            try {
+              console.log(`[SYNC] Migrating local asset: ${fileName}`);
+              const uploadRes = await cloudinary.uploader.upload(localPath, {
+                folder: "the_vagina_room/migration",
+                public_id: fileName.split(".")[0]
+              });
+              
+              if (uploadRes.secure_url) {
+                obj[key] = uploadRes.secure_url;
+                migrationCount++;
+                // Optional: Delete local file after sync to keep disk clean?
+                // fs.unlinkSync(localPath); 
+              }
+            } catch (err: any) {
+              console.error(`[SYNC] Failed to migrate ${fileName}:`, err.message);
+              errors.push(`${fileName}: ${err.message}`);
+            }
+          } else {
+            console.warn(`[SYNC] File not found on disk: ${localPath}`);
+            errors.push(`${fileName}: File missing on server disk`);
+          }
+        } else if (typeof obj[key] === "object" && obj[key] !== null) {
+          await migrateObject(obj[key]);
+        }
+      }
+    };
+
+    await migrateObject(content);
+
+    if (migrationCount > 0) {
+      fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2));
+      console.log(`[SYNC] Successfully migrated ${migrationCount} assets.`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Migration check complete.`,
+      migratedCount: migrationCount,
+      errors: errors.length > 0 ? errors : null
+    });
+  } catch (err: any) {
+    console.error("[SYNC] Global migration error:", err);
+    res.status(500).json({ error: "Internal migration logic failed", details: err.message });
+  }
+});
+
 // Update an order (admin access / transaction update)
 app.patch("/api/orders/:id", async (req, res) => {
   const { id } = req.params;

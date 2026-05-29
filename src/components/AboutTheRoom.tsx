@@ -68,6 +68,7 @@ export default function AboutTheRoom() {
           </div>
         </div>
       </motion.div>
+
     </section>
   );
 }

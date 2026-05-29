@@ -7,7 +7,7 @@ import { useContent } from '../context/ContentContext';
 import { safeJsonParse } from '../lib/json';
 
 export default function Navigation() {
-  const { content } = useContent();
+  const { content, isAdmin } = useContent();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showWhoDropdown, setShowWhoDropdown] = useState(false);
@@ -15,6 +15,8 @@ export default function Navigation() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const location = useLocation();
+
+  const showAdminBar = isAdmin && location.pathname !== '/admin';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -72,7 +74,9 @@ export default function Navigation() {
 
   return (
     <nav 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
+      className={`fixed left-0 right-0 z-50 transition-all duration-700 ${
+        showAdminBar ? (isScrolled ? 'top-12' : 'top-14 md:top-12') : 'top-0'
+      } ${
         isScrolled ? 'bg-brand-black/95 backdrop-blur-xl py-6 border-b border-white/5' : 'bg-transparent py-10'
       }`}
     >
@@ -99,17 +103,17 @@ export default function Navigation() {
         </div>
 
         {/* Unified Header Navigation Actions */}
-        <div className="flex items-center space-x-2 relative z-[60]">
+        <div className={`flex items-center space-x-2 transition-all duration-300 ${isOpen ? 'fixed right-6 top-8' : 'relative'} z-[10001]`}>
           <button 
-            className="p-2 text-white transition-transform duration-300 hover:scale-110 active:scale-90"
+            className={`p-2 text-white transition-all duration-300 hover:scale-110 active:scale-90 cursor-pointer ${isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             onClick={() => setIsSearchOpen(true)}
             aria-label="Search"
           >
-            <Search size={22} className={isScrolled || isOpen ? 'text-brand-gold' : 'text-white'} />
+            <Search size={22} className={isScrolled ? 'text-brand-gold' : 'text-white'} />
           </button>
           
           <button 
-            className="p-2 text-white transition-transform duration-300 hover:scale-110 active:scale-90"
+            className="p-2 text-white transition-all duration-300 hover:scale-110 active:scale-90 cursor-pointer"
             onClick={() => setIsOpen(!isOpen)}
             aria-label={isOpen ? "Close menu" : "Open menu"}
           >
@@ -127,16 +131,24 @@ export default function Navigation() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-40"
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9998]"
             />
             <motion.div 
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 w-[90%] sm:w-[85%] max-w-[450px] bg-brand-black border-l border-white/10 pt-20 px-6 md:px-12 pb-10 z-50 flex flex-col overflow-y-auto h-full"
+              className={`fixed right-0 top-0 bottom-0 w-[90%] sm:w-[85%] max-w-[450px] bg-brand-black border-l border-white/10 px-6 md:px-12 pb-10 z-[10000] flex flex-col overflow-y-auto pt-32`}
             >
-              {navLinks.map((link) => (
+              {/* Internal Sidebar Close (Redundancy for better UX on mobile) */}
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="absolute top-8 left-6 text-brand-gold/40 hover:text-brand-gold transition-colors flex items-center gap-2 text-[10px] uppercase font-black tracking-widest sm:hidden"
+              >
+                <X size={16} /> Close Menu
+              </button>
+              <div className="flex flex-col flex-grow">
+                {navLinks.map((link) => (
                 <div key={link.name} className="flex flex-col space-y-6 mb-8 flex-shrink-0">
                   {link.submenu ? (
                     <button 
@@ -203,6 +215,7 @@ export default function Navigation() {
                   )}
                 </div>
               ))}
+              </div>
               
               <div className="pt-8 border-t border-white/5 flex-shrink-0 space-y-4">
                 <Link 

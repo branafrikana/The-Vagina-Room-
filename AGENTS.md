@@ -10,6 +10,11 @@
 - The storefront aggregates products from multiple external JSON API sources configured in the admin panel.
 - All external sources are proxied via `/api/proxy-products` to avoid CORS issues.
 
+## Media & Image Persistence
+- **Cloudinary Integration**: Mandatory for production environments (Render/Cloud Run). Relative `/uploads/` URLs are ephemeral and will break on deployment.
+- **Migration**: Existing local images should be re-uploaded once Cloudinary is configured to ensure global availability.
+- **Render Setup**: Ensure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` are set in the Render environment variables.
+
 ## Visual Identity
 - **Theme**: "Cosmic Obsidian" - Deep blacks, brand gold (#D4AF37), and elegant serif typography (Playfair Display) paired with JetBrains Mono for data.
 - **Micro-interactions**: Every button and card should have smooth hover states and entry animations using `motion`.

@@ -189,7 +189,7 @@ export default function ProductsPage() {
           </section>
 
           {/* Catalog Tab View Filter Actions */}
-          <section className="py-8 bg-brand-black border-b border-white/5 sticky top-28 z-30 backdrop-blur-md bg-brand-black/95">
+          <section className="py-8 bg-brand-black border-b border-white/5 sticky top-36 z-30 backdrop-blur-md bg-brand-black/95">
             <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               
               {/* Category buttons */}

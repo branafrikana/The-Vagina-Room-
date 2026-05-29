@@ -202,14 +202,16 @@ export default function AdminSettingsTab({ activeTab }: AdminSettingsTabProps) {
 
         <div className="pt-6 border-t border-white/10">
           <div className="flex justify-between items-center mb-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">PWA Settings (manifest.json)</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-brand-gold">PWA Master Control</p>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Prompt Popup</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                { (parseJSON(content.pwaSettingsJson, {}).pwaEnabled !== false) ? 'SYSTEM ACTIVE' : 'SYSTEM OFFLINE' }
+              </span>
               <button 
-                onClick={() => updateJSONField("pwaSettingsJson", "showPopup", !parseJSON(content.pwaSettingsJson, {}).showPopup)}
-                className={`w-10 h-5 relative rounded-full transition-colors ${parseJSON(content.pwaSettingsJson, {}).showPopup ? 'bg-emerald-500' : 'bg-white/10'}`}
+                onClick={() => updateJSONField("pwaSettingsJson", "pwaEnabled", parseJSON(content.pwaSettingsJson, {}).pwaEnabled === false)}
+                className={`w-10 h-5 relative rounded-full transition-colors ${parseJSON(content.pwaSettingsJson, {}).pwaEnabled !== false ? 'bg-emerald-500' : 'bg-white/10'}`}
               >
-                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${parseJSON(content.pwaSettingsJson, {}).showPopup ? 'right-1' : 'left-1'}`} />
+                <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${parseJSON(content.pwaSettingsJson, {}).pwaEnabled !== false ? 'right-1' : 'left-1'}`} />
               </button>
             </div>
           </div>

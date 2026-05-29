@@ -398,6 +398,218 @@ function AdminReorderPanel() {
   );
 }
 
+function AdminMediaSyncPanel() {
+  const { content, adminPasswordToken } = useContent();
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
+  const [syncMsg, setSyncMsg] = useState("");
+  const [migratedCount, setMigratedCount] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Deep scan for local /uploads/ images in content
+  const countLocalImages = (obj: any): number => {
+    let count = 0;
+    for (const key in obj) {
+      if (typeof obj[key] === "string" && obj[key].startsWith("/uploads/")) {
+        count++;
+      } else if (typeof obj[key] === "object" && obj[key] !== null) {
+        count += countLocalImages(obj[key]);
+      }
+    }
+    return count;
+  };
+
+  const detectedCount = countLocalImages(content);
+
+  const SYNC_STEPS = [
+    { label: "Check Env Config", icon: "⚙️" },
+    { label: "Site Scan", icon: "🔍" },
+    { label: "Mirroring Assets", icon: "✨" },
+    { label: "Finalize Check", icon: "📁" }
+  ];
+
+  const handleSync = async () => {
+    console.log("[ADMIN] Initiating Media Sync Process...");
+    
+    if (!window.confirm(`This process will scan all site content for local images and migrate them to Cloudinary. Detected ${detectedCount} potential local assets. Continue?`)) return;
+    
+    setSyncStatus("syncing");
+    setCurrentStep(0);
+    setMigratedCount(0);
+    setSyncMsg("");
+
+    try {
+      // Transition for UI visibility
+      await new Promise(r => setTimeout(r, 800));
+      setCurrentStep(1);
+      
+      await new Promise(r => setTimeout(r, 1000));
+      setCurrentStep(2);
+
+      const res = await fetchWithApiBase("/api/media/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: adminPasswordToken })
+      });
+      
+      const data = await res.json();
+      console.log("[ADMIN] Sync API Response:", data);
+      
+      if (data.success) {
+        setMigratedCount(data.migratedCount);
+        setCurrentStep(3);
+        await new Promise(r => setTimeout(r, 800));
+        setSyncStatus("success");
+        setSyncMsg(data.message || "Cloud persistence sync successfully completed.");
+      } else {
+        setSyncStatus("error");
+        setSyncMsg(data.error || "Sync failed during cloud migration.");
+      }
+    } catch (err: any) {
+      console.error("[ADMIN] Sync process threw error:", err);
+      setSyncStatus("error");
+      setSyncMsg("Network error or server timeout during synchronization.");
+    }
+  };
+
+  return (
+    <div className="bg-white/[0.02] border border-white/5 p-8 flex flex-col items-center text-center rounded-lg">
+       <div className={`w-16 h-16 border flex items-center justify-center mb-6 transition-colors duration-700 ${
+         syncStatus === "syncing" ? "bg-brand-gold/20 border-brand-gold/40 animate-pulse" : "bg-brand-gold/10 border-brand-gold/20"
+       }`}>
+          <Sparkles className={syncStatus === "syncing" ? "text-brand-gold" : "text-brand-gold/60"} size={32} />
+       </div>
+       
+       <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">Cloud Persistence Sync</h3>
+       <p className="text-xs text-white/40 max-w-lg mb-8 leading-relaxed">
+         Render and other cloud platforms do not persist local /uploads/ files after deployment. 
+         This tool migrates any existing local images found in your content to Cloudinary, ensuring they remain valid and globally accessible.
+       </p>
+
+       {detectedCount > 0 && syncStatus === "idle" && (
+         <div className="mb-8 px-6 py-3 bg-brand-gold/5 border border-brand-gold/20 rounded-full flex items-center gap-3">
+           <div className="w-2 h-2 rounded-full bg-brand-gold animate-ping" />
+           <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold">
+             {detectedCount} local asset{detectedCount > 1 ? 's' : ''} awaiting migration
+           </span>
+         </div>
+       )}
+
+       {syncStatus === "syncing" ? (
+         <div className="w-full max-w-md space-y-6 mb-8">
+           <div className="grid grid-cols-4 gap-2">
+             {SYNC_STEPS.map((step, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm border-2 transition-all duration-500 ${
+                    currentStep > idx ? "bg-emerald-500 border-emerald-500 text-white" :
+                    currentStep === idx ? "bg-brand-gold border-brand-gold text-brand-black animate-pulse shadow-[0_0_15px_rgba(212,175,55,0.4)]" :
+                    "bg-white/5 border-white/10 text-white/20"
+                  }`}>
+                    {currentStep > idx ? "✓" : step.icon}
+                  </div>
+                  <span className={`text-[8px] uppercase font-black tracking-widest ${currentStep === idx ? "text-brand-gold" : "text-white/20"}`}>
+                    {step.label}
+                  </span>
+                </div>
+             ))}
+           </div>
+           
+           <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-brand-gold shadow-[0_0_10px_rgba(212,175,55,0.8)]"
+                initial={{ width: "0%" }}
+                animate={{ width: `${(currentStep + 1) * 25}%` }}
+                transition={{ duration: 0.5 }}
+              />
+           </div>
+           <p className="text-[10px] font-mono text-white/40 animate-pulse uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+             <span className="w-1.5 h-1.5 bg-brand-gold rounded-full" />
+             Currently: {SYNC_STEPS[currentStep].label}...
+           </p>
+         </div>
+       ) : (
+         <div className="space-y-4">
+           <button
+             onClick={handleSync}
+             className="group relative bg-brand-gold hover:bg-white text-brand-black px-12 py-5 text-xs font-black uppercase tracking-widest transition-all shadow-2xl flex items-center gap-2 cursor-pointer overflow-hidden"
+           >
+             <span className="relative z-10 flex items-center gap-2">
+               <Sparkles size={14} className="group-hover:scale-125 transition-transform" />
+               Build Cloud Mirror
+             </span>
+             <div className="absolute inset-0 bg-white/20 translate-y-full hover:translate-y-0 transition-transform duration-300" />
+           </button>
+           
+           {detectedCount === 0 && syncStatus === "idle" && (
+             <p className="text-[9px] uppercase font-black tracking-widest text-white/20 italic">
+               No local images detected in current site content.
+             </p>
+           )}
+         </div>
+       )}
+
+       {syncStatus === "success" && (
+         <motion.div 
+           initial={{ opacity: 0, scale: 0.95 }}
+           animate={{ opacity: 1, scale: 1 }}
+           className="mt-8 p-6 border border-emerald-500/30 bg-emerald-950/10 w-full max-w-md text-center"
+         >
+            <div className="flex flex-col items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xl font-black shadow-lg">✓</div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Sync Accomplished</p>
+            </div>
+            <p className="text-[10px] font-mono text-white/60 leading-normal mb-4">{syncMsg}</p>
+            {migratedCount > 0 ? (
+              <div className="pt-4 border-t border-white/10">
+                <p className="text-[10px] text-brand-gold uppercase font-black tracking-widest">
+                  Migrated: {migratedCount} Assets
+                </p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-4 px-6 py-2 border border-brand-gold text-brand-gold text-[9px] font-black uppercase tracking-widest hover:bg-brand-gold hover:text-brand-black transition-all cursor-pointer"
+                >
+                  Refresh Browser to Apply
+                </button>
+              </div>
+            ) : (
+              <p className="text-[9px] mt-4 text-white/30 uppercase tracking-[0.1em]">Verification complete. No pending local assets found.</p>
+            )}
+            <button 
+              onClick={() => setSyncStatus("idle")}
+              className="mt-6 text-[9px] text-white/20 uppercase tracking-widest hover:text-white transition-colors"
+            >
+              Back to Mirror Module
+            </button>
+         </motion.div>
+       )}
+
+       <AnimatePresence>
+         {syncStatus === "error" && (
+           <motion.div 
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             exit={{ opacity: 0, scale: 0.9 }}
+             className="mt-8 p-6 border border-brand-red/30 bg-brand-red/5 w-full max-w-md text-brand-red"
+           >
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <X size={16} />
+                <p className="text-[10px] font-mono uppercase font-black">Migration Failed</p>
+              </div>
+              <p className="text-[10px] font-mono opacity-80 leading-relaxed mb-4">{syncMsg}</p>
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={() => setSyncStatus("idle")}
+                  className="px-6 py-3 bg-brand-red/10 border border-brand-red/30 text-[9px] uppercase font-black tracking-widest hover:bg-brand-red hover:text-white transition-all cursor-pointer"
+                >
+                  Retry Configuration
+                </button>
+              </div>
+           </motion.div>
+         )}
+       </AnimatePresence>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { 
     content, 
@@ -413,7 +625,7 @@ export default function AdminPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "submissions" | "content" | "navigation" | "general" | "branding" | "seo" | "security" | "social" | "reorder_sections" | "products" | "orders" | "business_details" | "checkout_settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "submissions" | "content" | "navigation" | "general" | "branding" | "seo" | "security" | "social" | "reorder_sections" | "products" | "orders" | "business_details" | "checkout_settings" | "media_sync">("dashboard");
   const [activeContentTab, setActiveContentTab] = useState<"home" | "about_us" | "about_dr_fid" | "dr_fid_booking" | "focus_areas" | "team_partner" | "projects_events" | "gallery" | "contact" | "testimonials" | "support" | "policy_terms" | "footer">("home");
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -779,10 +991,11 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
           
           {/* Navigation Sidebar */}
-          <div className="lg:col-span-1 space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-3 mb-4">
-              Dashboard Modules
-            </p>
+          <div className="lg:col-span-1">
+            <div className="sticky top-40 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-3 mb-4">
+                Dashboard Modules
+              </p>
             <button
               onClick={() => setActiveTab("dashboard")}
               className={`w-full text-left px-5 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between cursor-pointer ${
@@ -903,6 +1116,19 @@ export default function AdminPage() {
               </span>
             </button>
 
+            <button
+              onClick={() => setActiveTab("media_sync")}
+              className={`w-full text-left px-5 py-4 text-xs font-black uppercase tracking-widest transition-all flex items-center justify-between cursor-pointer ${
+                activeTab === "media_sync"
+                  ? "bg-brand-gold text-brand-black"
+                  : "bg-white/[0.02] border border-white/5 text-white/70 hover:bg-white/[0.05]"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-xs">☁️</span> Media & Cloud Sync
+              </span>
+            </button>
+
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 px-3 mt-6 mb-2">
               Configuration
             </p>
@@ -968,6 +1194,7 @@ export default function AdminPage() {
               </span>
             </button>
           </div>
+        </div>
 
           {/* Module Panel Area */}
           <div className="lg:col-span-3">
@@ -1312,6 +1539,19 @@ export default function AdminPage() {
                   className="bg-white/[0.02] border border-white/5 p-6"
                 >
                   <AdminCheckoutSettings />
+                </motion.div>
+              )}
+
+              {/* Tab: Media & Cloud Sync */}
+              {activeTab === "media_sync" && (
+                <motion.div
+                  key="media-sync-tab"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="bg-white/[0.02] border border-white/5 p-6"
+                >
+                  <AdminMediaSyncPanel />
                 </motion.div>
               )}
 

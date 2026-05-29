@@ -86,7 +86,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex flex-col items-center pt-24 pb-6 px-4 bg-brand-black/95 backdrop-blur-xl"
+          className="fixed inset-0 z-[10001] flex flex-col items-center pt-24 pb-6 px-4 bg-brand-black/95 backdrop-blur-xl"
         >
           {/* Close Background Area */}
           <div className="absolute inset-0 z-0" onClick={onClose} />
