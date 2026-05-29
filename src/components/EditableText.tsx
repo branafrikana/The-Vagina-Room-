@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Edit3, Check, X, Minus, Plus } from "lucide-react";
-import { useContent, ContentData } from "../context/ContentContext";
+import { useContent, ContentData, FALLBACK_DEFAULTS } from "../context/ContentContext";
 
 interface EditableTextProps {
   field: keyof ContentData | string;
@@ -44,7 +44,10 @@ export default function EditableText({
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
-  const rawText = (content as any)[field] || "";
+  const dbValue = (content as any)[field];
+  const rawText = dbValue !== undefined && dbValue !== null && dbValue !== ""
+    ? dbValue
+    : ((FALLBACK_DEFAULTS as any)[field] || "");
   
   // Parse font size overrides
   const sizeOverrides = JSON.parse(content.fontSizeOverridesJson || "{}");

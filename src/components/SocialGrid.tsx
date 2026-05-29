@@ -29,7 +29,8 @@ export default function SocialGrid() {
         <img 
           src={branding.socialLogoUrl} 
           alt="The Vagina Room" 
-          className="h-16 md:h-24 w-auto mx-auto object-contain"
+          style={{ height: `${branding.socialLogoHeight || 80}px` }}
+          className="max-h-32 md:max-h-none w-auto mx-auto object-contain"
           referrerPolicy="no-referrer"
         />
       );

@@ -465,12 +465,26 @@ export default function AdminSettingsTab({ activeTab }: AdminSettingsTabProps) {
                </div>
                
                {(config.headerLogoType || 'text') === 'image' && (
-                 <ImageUploader 
-                   fieldKey="headerLogoUrl" 
-                   label="Header Navigation Logo (Top Left)" 
-                    currentValue={config.headerLogoUrl} 
-                   onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "headerLogoUrl", url)}
-                 />
+                 <div className="space-y-4">
+                   <ImageUploader 
+                     fieldKey="headerLogoUrl" 
+                     label="Header Navigation Logo (Top Left)" 
+                      currentValue={config.headerLogoUrl} 
+                     onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "headerLogoUrl", url)}
+                   />
+                   <div className="space-y-2 border-t border-white/5 pt-2">
+                     <div className="flex justify-between items-center">
+                       <label className="text-[9px] font-bold uppercase tracking-wider text-white/40">Logo Height</label>
+                       <span className="text-white/60 font-mono text-[10px]">{config.headerLogoHeight || 44}px</span>
+                     </div>
+                     <input 
+                       type="range" min="16" max="150" step="1"
+                       value={config.headerLogoHeight || 44}
+                       onChange={(e) => updateJSONField("brandingSettingsJson", "headerLogoHeight", parseInt(e.target.value))}
+                       className="w-full accent-brand-gold h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                     />
+                   </div>
+                 </div>
                )}
                {/* Note: I'll need to update ImageUploader to support custom callbacks or just use the fieldKey directly if it matches the content state field */}
              </div>
@@ -497,12 +511,26 @@ export default function AdminSettingsTab({ activeTab }: AdminSettingsTabProps) {
                </div>
                
                {(config.footerLogo1Type || 'text') === 'image' && (
-                 <ImageUploader 
-                    fieldKey="footerLogo1Url" 
-                    label="Footer Primary Logo (Main Footer)" 
-                     currentValue={config.footerLogo1Url} 
-                    onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "footerLogo1Url", url)}
-                 />
+                 <div className="space-y-4">
+                   <ImageUploader 
+                      fieldKey="footerLogo1Url" 
+                      label="Footer Primary Logo (Main Footer)" 
+                       currentValue={config.footerLogo1Url} 
+                      onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "footerLogo1Url", url)}
+                   />
+                   <div className="space-y-2 border-t border-white/5 pt-2">
+                     <div className="flex justify-between items-center">
+                       <label className="text-[9px] font-bold uppercase tracking-wider text-white/40">Logo Height</label>
+                       <span className="text-white/60 font-mono text-[10px]">{config.footerLogo1Height || 64}px</span>
+                     </div>
+                     <input 
+                       type="range" min="24" max="250" step="2"
+                       value={config.footerLogo1Height || 64}
+                       onChange={(e) => updateJSONField("brandingSettingsJson", "footerLogo1Height", parseInt(e.target.value))}
+                       className="w-full accent-brand-gold h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                     />
+                   </div>
+                 </div>
                )}
              </div>
 
@@ -528,12 +556,26 @@ export default function AdminSettingsTab({ activeTab }: AdminSettingsTabProps) {
                </div>
                
                {(config.footerLogo2Type || 'text') === 'image' && (
-                 <ImageUploader 
-                    fieldKey="footerLogo2Url" 
-                    label="Footer Secondary/Accent Logo" 
-                     currentValue={config.footerLogo2Url} 
-                    onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "footerLogo2Url", url)}
-                 />
+                 <div className="space-y-4">
+                   <ImageUploader 
+                      fieldKey="footerLogo2Url" 
+                      label="Footer Secondary/Accent Logo" 
+                       currentValue={config.footerLogo2Url} 
+                      onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "footerLogo2Url", url)}
+                   />
+                   <div className="space-y-2 border-t border-white/5 pt-2">
+                     <div className="flex justify-between items-center">
+                       <label className="text-[9px] font-bold uppercase tracking-wider text-white/40">Logo Height</label>
+                       <span className="text-white/60 font-mono text-[10px]">{config.footerLogo2Height || 32}px</span>
+                     </div>
+                     <input 
+                       type="range" min="12" max="120" step="1"
+                       value={config.footerLogo2Height || 32}
+                       onChange={(e) => updateJSONField("brandingSettingsJson", "footerLogo2Height", parseInt(e.target.value))}
+                       className="w-full accent-brand-gold h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                     />
+                   </div>
+                 </div>
                )}
              </div>
 
@@ -559,12 +601,26 @@ export default function AdminSettingsTab({ activeTab }: AdminSettingsTabProps) {
                </div>
                
                {(config.socialLogoType || 'text') === 'image' && (
-                 <ImageUploader 
-                   fieldKey="socialLogoUrl" 
-                   label="Social Section Logo Image" 
-                   currentValue={config.socialLogoUrl} 
-                   onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "socialLogoUrl", url)}
-                 />
+                 <div className="space-y-4">
+                   <ImageUploader 
+                     fieldKey="socialLogoUrl" 
+                     label="Social Section Logo Image" 
+                     currentValue={config.socialLogoUrl} 
+                     onUploadSuccess={(url: string) => updateJSONField("brandingSettingsJson", "socialLogoUrl", url)}
+                   />
+                   <div className="space-y-2 border-t border-white/5 pt-2">
+                     <div className="flex justify-between items-center">
+                       <label className="text-[9px] font-bold uppercase tracking-wider text-white/40">Logo Height</label>
+                       <span className="text-white/60 font-mono text-[10px]">{config.socialLogoHeight || 80}px</span>
+                     </div>
+                     <input 
+                       type="range" min="30" max="300" step="2"
+                       value={config.socialLogoHeight || 80}
+                       onChange={(e) => updateJSONField("brandingSettingsJson", "socialLogoHeight", parseInt(e.target.value))}
+                       className="w-full accent-brand-gold h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                     />
+                   </div>
+                 </div>
                )}
              </div>
 

@@ -6,10 +6,10 @@ import { ImageLoader } from './ImageLoader';
 export default function IdentityGrid() {
   const { content } = useContent();
   const fallbackIdentities = [
-    { label: content.identityLabel1 || 'Holistic Wellness', image: content.identityImg1 || 'https://images.unsplash.com/photo-1576089234411-497c62ca621e?auto=format&fit=crop&q=80&w=800' },
-    { label: content.identityLabel2 || 'Integrative Therapy', image: content.identityImg2 || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800' },
-    { label: content.identityLabel3 || 'SPA Business Expert', image: content.identityImg3 || 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&q=80&w=800' },
-    { label: content.identityLabel4 || 'Women’s Health', image: content.identityImg4 || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800' }
+    { label: content.identityLabel1 || 'Speaker', image: content.identityImg1 || 'https://images.unsplash.com/photo-1576089234411-497c62ca621e?auto=format&fit=crop&q=80&w=800' },
+    { label: content.identityLabel2 || 'Trainer', image: content.identityImg2 || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800' },
+    { label: content.identityLabel3 || 'Coach', image: content.identityImg3 || 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&q=80&w=800' },
+    { label: content.identityLabel4 || 'Therapist', image: content.identityImg4 || 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800' }
   ];
 
   let identities = fallbackIdentities;
@@ -42,9 +42,11 @@ export default function IdentityGrid() {
       >
         {identities.map((item, index) => (
           <div key={index} className="py-8 px-4 text-center border-r border-white/5 last:border-0 min-w-[150px] lg:min-w-0">
-             <span className="text-[10px] font-black tracking-[0.3em] uppercase text-white whitespace-nowrap">
-               {item.label}
-             </span>
+             <EditableText 
+                field={`identityLabel${index + 1}`}
+                className="font-black tracking-[0.3em] uppercase text-white whitespace-nowrap"
+                as="span"
+             />
           </div>
         ))}
       </motion.div>

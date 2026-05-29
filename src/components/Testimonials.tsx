@@ -207,10 +207,21 @@ export default function Testimonials() {
           {/* Cards Active Cycling Column */}
           <div className="lg:col-span-7">
             {filteredTestimonials.length > 0 ? (
-              <div 
-                className="bg-white/5 p-10 md:p-14 border border-white/10 relative min-h-[440px] flex flex-col justify-between"
+              <motion.div 
+                className="bg-white/5 p-10 md:p-14 border border-white/10 relative min-h-[440px] flex flex-col justify-between touch-pan-y cursor-grab active:cursor-grabbing"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
+                drag={filteredTestimonials.length > 1 ? "x" : false}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={(_event, info) => {
+                  const swipeThreshold = 50;
+                  if (info.offset.x < -swipeThreshold) {
+                    handleNext();
+                  } else if (info.offset.x > swipeThreshold) {
+                    handlePrev();
+                  }
+                }}
               >
                 {/* Top rating or quotes mark */}
                 <div className="flex justify-between items-start mb-8">
@@ -305,7 +316,7 @@ export default function Testimonials() {
                   </div>
                 </div>
 
-              </div>
+              </motion.div>
             ) : (
               <div className="bg-white/5 p-14 border border-dashed border-white/10 flex flex-col items-center justify-center text-center min-h-[440px]">
                 <p className="text-white/20 font-mono text-xs uppercase tracking-widest">No testimonials found in this category.</p>

@@ -3,7 +3,7 @@ import { uploadImage as uploadToBackend } from '../api/client';
 import { fetchWithApiBase } from '../lib/api';
 
 // Static defaults for direct client-side resilience
-const FALLBACK_DEFAULTS = {
+export const FALLBACK_DEFAULTS = {
   heroWelcome: "WELCOME TO",
   heroHeading: "The Vagina Room",
   heroSub: "Where Women Heal, Learn & Thrive...",
@@ -27,13 +27,13 @@ const FALLBACK_DEFAULTS = {
 
   // Identity Grid & Scrolling Ticker
   tickerText: "TRUSTED EDUCATION • EXPERT GUIDANCE • EMOTIONAL SUPPORT • HOLISTIC WELLNESS • THE VAGINA ROOM GLOBAL • ",
-  identityLabel1: "Holistic Wellness",
+  identityLabel1: "Speaker",
   identityImg1: "https://images.unsplash.com/photo-1576089234411-497c62ca621e?auto=format&fit=crop&q=80&w=800",
-  identityLabel2: "Integrative Therapy",
+  identityLabel2: "Trainer",
   identityImg2: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800",
-  identityLabel3: "SPA Business Expert",
+  identityLabel3: "Coach",
   identityImg3: "https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&q=80&w=800",
-  identityLabel4: "Women’s Health",
+  identityLabel4: "Therapist",
   identityImg4: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800",
 
   // Homepage About Us Detailed Section

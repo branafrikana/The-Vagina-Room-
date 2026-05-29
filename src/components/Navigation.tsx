@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Menu, X, ChevronDown, Download, Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
@@ -17,9 +17,12 @@ export default function Navigation() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      setIsScrolled(prev => {
+        const scrolled = window.scrollY > 20;
+        return scrolled !== prev ? scrolled : prev;
+      });
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -56,6 +59,15 @@ export default function Navigation() {
 
   const branding = JSON.parse(content.brandingSettingsJson || '{}');
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (location.pathname === '/') {
+      window.location.reload();
+    } else {
+      window.location.href = '/';
+    }
+  };
+
   return (
     <nav 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
@@ -63,12 +75,13 @@ export default function Navigation() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-        <Link to="/" className="font-sans text-3xl font-black tracking-tighter text-white uppercase group">
+        <Link to="/" onClick={handleLogoClick} className="font-sans text-3xl font-black tracking-tighter text-white uppercase group">
           {branding.headerLogoType === 'image' && branding.headerLogoUrl ? (
             <img 
               src={branding.headerLogoUrl} 
               alt="The Vagina Room" 
-              className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105"
+              style={{ height: `${branding.headerLogoHeight || 44}px` }}
+              className="max-h-16 md:max-h-none w-auto object-contain transition-transform group-hover:scale-105"
               referrerPolicy="no-referrer"
             />
           ) : (

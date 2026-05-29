@@ -17,18 +17,17 @@ function FocusAreaCard({ area, index }: { area: typeof FOCUS_AREAS[0], index: nu
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.1 }}
-      className="relative group p-8 sm:p-16 bg-brand-black hover:bg-white/5 transition-all duration-700 h-full overflow-hidden flex flex-col"
+      className="relative group p-8 sm:p-16 bg-transparent border-r border-white/5 last:border-0 hover:bg-white/5 transition-all duration-700 h-full overflow-hidden flex flex-col"
     >
-      <div className="absolute top-0 left-0 w-2 h-0 bg-brand-red group-hover:h-full transition-all duration-700" />
-      <span className="text-brand-gold text-5xl font-serif font-light mb-12 block opacity-20 group-hover:opacity-100 transition-opacity">0{index + 1}</span>
+      <span className="text-brand-gold text-5xl font-sans font-black mb-12 block opacity-40 group-hover:opacity-100 transition-opacity">0{index + 1}</span>
       
-      <h3 className="font-sans text-2xl sm:text-4xl font-black mb-8 text-white tracking-tighter uppercase">{area.title}</h3>
+      <h3 className="font-sans text-2xl font-black mb-8 text-white tracking-widest uppercase">{area.title}</h3>
       
       <div className="flex-grow">
-        <ul className="space-y-6">
+        <ul className="space-y-4">
           {initialItems.map((item) => (
-            <li key={item} className="flex items-start text-sm font-black tracking-widest text-white/40 group-hover:text-white uppercase transition-colors">
-              <span className="text-brand-red mr-4">+</span>
+            <li key={item} className="flex items-start text-sm font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors">
+              <span className="text-brand-gold mr-4">+</span>
               {item}
             </li>
           ))}
@@ -42,10 +41,10 @@ function FocusAreaCard({ area, index }: { area: typeof FOCUS_AREAS[0], index: nu
                 transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="overflow-hidden"
               >
-                <div className="pt-6 space-y-6">
+                <div className="pt-6 space-y-4">
                   {remainingItems.map((item) => (
-                    <li key={item} className="list-none flex items-start text-sm font-black tracking-widest text-white/40 group-hover:text-white uppercase transition-colors">
-                      <span className="text-brand-red mr-4">+</span>
+                    <li key={item} className="list-none flex items-start text-sm font-black uppercase tracking-widest text-white/60 group-hover:text-white transition-colors">
+                      <span className="text-brand-gold mr-4">+</span>
                       {item}
                     </li>
                   ))}
@@ -59,7 +58,7 @@ function FocusAreaCard({ area, index }: { area: typeof FOCUS_AREAS[0], index: nu
       {hasMore && (
         <button 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-12 flex items-center text-[10px] font-black tracking-[0.3em] uppercase text-brand-gold hover:text-white transition-colors group/btn"
+          className="mt-12 flex items-center text-[10px] font-black tracking-[0.5em] uppercase text-brand-gold hover:text-white transition-colors group/btn"
         >
           {isExpanded ? 'Show Less' : 'Read More'}
           {isExpanded ? (
@@ -85,18 +84,18 @@ export default function FocusAreas() {
   }
 
   return (
-    <section id="focus-areas" className="py-40 bg-brand-black text-white relative">
+    <section id="focus-areas" className="py-40 bg-[#050505] text-white relative">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-32">
-          <p className="text-brand-red font-black tracking-[0.5em] uppercase text-xs mb-8">
+        <div className="mb-24 px-6 text-center">
+          <p className="text-brand-gold font-black tracking-[0.5em] uppercase text-[10px] mb-8">
             <EditableText field="focusAreasSub" />
           </p>
-          <h2 className="font-sans text-5xl md:text-6xl font-black leading-[0.8] mb-12 tracking-tighter uppercase">
+          <h2 className="font-sans text-5xl md:text-7xl font-black leading-none mb-12 tracking-tighter uppercase text-white">
             <EditableText field="focusAreasTitle" fancyMode="inline" />
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/10 border border-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-y border-white/5">
           {areas.map((area, index) => (
             <FocusAreaCard key={area.title} area={area} index={index} />
           ))}

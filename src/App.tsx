@@ -1,5 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import ScrollToTop from './components/ScrollToTop';
+import PwaPopup from './components/PwaPopup';
+import AdminBar from './components/AdminBar';
+import DynamicThemeManager from './components/DynamicThemeManager';
+import { ContentProvider } from './context/ContentContext';
+import { CartProvider } from './context/CartContext';
+
+// Eagerly/Statically load pages for instant access and zero visual delays
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import FocusAreasPage from './pages/FocusAreasPage';
@@ -16,13 +24,7 @@ import SupportPage from './pages/SupportPage';
 import PartnerPage from './pages/PartnerPage';
 import PolicyPage from './pages/PolicyPage';
 import TermsPage from './pages/TermsPage';
-import ScrollToTop from './components/ScrollToTop';
-import PwaPopup from './components/PwaPopup';
 import AdminPage from './pages/AdminPage';
-import AdminBar from './components/AdminBar';
-import DynamicThemeManager from './components/DynamicThemeManager';
-import { ContentProvider } from './context/ContentContext';
-import { CartProvider } from './context/CartContext';
 
 export default function App() {
   return (

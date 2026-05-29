@@ -26,27 +26,37 @@ dotenv.config();
 // Load Firebase Config
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
 let firebaseConfig: any = {};
-if (fs.existsSync(firebaseConfigPath)) {
+
+if (process.env.FIREBASE_CONFIG) {
+  try {
+    firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+    console.log("[FIREBASE] Configuration loaded from FIREBASE_CONFIG environment variable.");
+  } catch (error: any) {
+    console.error("[FIREBASE] Failed to parse FIREBASE_CONFIG env variable:", error.message);
+  }
+} else if (fs.existsSync(firebaseConfigPath)) {
   firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf8"));
+  console.log("[FIREBASE] Configuration loaded from local firebase-applet-config.json.");
 }
 
 // Initialize Firebase via Client SDK to avoid IAM permission limits on Cloud Run
 let appInstance: any;
-if (fs.existsSync(firebaseConfigPath)) {
+if (firebaseConfig && Object.keys(firebaseConfig).length > 0) {
   try {
-    const config = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf8"));
-    appInstance = clientInitializeApp(config);
+    appInstance = clientInitializeApp(firebaseConfig);
+    console.log("[FIREBASE] Firebase client initialized successfully.");
   } catch (e) {
     console.error("[FIREBASE] Init error (config exists but failed to load):", e);
   }
 } else {
-  console.log("[FIREBASE] Config file not found, running in standalone mode (No Firestore).");
+  console.log("[FIREBASE] Firebase config not detected. Running in standalone local mode. Content edits will write to internal disk.");
 }
 
 // Variables for global access
 let db: any;
 let contentColl: any;
 let submissionsColl: any;
+let ordersColl: any;
 let currentDbId: string | null | undefined = undefined;
 let isFirestoreAvailable = true;
 
@@ -61,6 +71,7 @@ function initFirestore(databaseId?: string | null) {
     db = clientGetFirestore(appInstance, currentDbId);
     contentColl = clientCollection(db, "configs");
     submissionsColl = clientCollection(db, "submissions");
+    ordersColl = clientCollection(db, "orders");
     console.log(`[FIREBASE] Firestore client prepared (db: ${currentDbId || "(default)"})`);
     isFirestoreAvailable = true; 
   } catch (err: any) {
@@ -132,13 +143,11 @@ async function seedFirestore() {
   try {
     const dRef = clientDoc(contentColl, "global");
     const docSnap = await clientGetDoc(dRef);
-    if (!docSnap.exists() && fs.existsSync(CONTENT_FILE)) {
-      console.log(`[FIREBASE] Seeding Firestore (db: ${currentDbId || "(default)"}) with local content...`);
+    if (fs.existsSync(CONTENT_FILE)) {
+      console.log(`[FIREBASE] Merging local content into Firestore (db: ${currentDbId || "(default)"})...`);
       const localData = JSON.parse(fs.readFileSync(CONTENT_FILE, "utf8"));
-      await clientSetDoc(dRef, localData);
-      console.log("[FIREBASE] Seeding successful.");
-    } else if (docSnap.exists()) {
-      console.log(`[FIREBASE] Firestore content found in ${currentDbId || "(default)"}.`);
+      await clientSetDoc(dRef, localData, { merge: true });
+      console.log("[FIREBASE] Merging successful.");
     }
   } catch (err: any) {
     const isNotFound = err.message?.includes("NOT_FOUND") || err.code === 5 || err.message?.includes("database not found");
@@ -179,6 +188,7 @@ app.use(express.json({ limit: "50mb" }));
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONTENT_FILE = path.join(DATA_DIR, "content.json");
 const SUBMISSIONS_FILE = path.join(DATA_DIR, "submissions.json");
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
 // Ensure database files and directory exist
@@ -551,6 +561,39 @@ app.get("/api/proxy-products", async (req, res) => {
   }
 });
 
+function migrateObsoleteIdentities(content: any) {
+  if (!content) return content;
+  const migrated = { ...content };
+  if (migrated.identityLabel1 === "Holistic Wellness") migrated.identityLabel1 = "Speaker";
+  if (migrated.identityLabel2 === "Integrative Therapy") migrated.identityLabel2 = "Trainer";
+  if (migrated.identityLabel3 === "SPA Business Expert") migrated.identityLabel3 = "Coach";
+  if (migrated.identityLabel4 === "Women’s Health" || migrated.identityLabel4 === "Women's Health") migrated.identityLabel4 = "Therapist";
+
+  if (migrated.identitiesJson) {
+    try {
+      let arr = JSON.parse(migrated.identitiesJson);
+      if (Array.isArray(arr) && arr.length > 0) {
+        let modified = false;
+        arr = arr.map((item: any) => {
+          const label = item.label;
+          let newLabel = label;
+          if (label === "Holistic Wellness") { newLabel = "Speaker"; modified = true; }
+          else if (label === "Integrative Therapy") { newLabel = "Trainer"; modified = true; }
+          else if (label === "SPA Business Expert") { newLabel = "Coach"; modified = true; }
+          else if (label === "Women’s Health" || label === "Women's Health") { newLabel = "Therapist"; modified = true; }
+          return { ...item, label: newLabel };
+        });
+        if (modified) {
+          migrated.identitiesJson = JSON.stringify(arr);
+        }
+      }
+    } catch (e) {
+      // safe fallback for parsing failure
+    }
+  }
+  return migrated;
+}
+
 // Fetch editable site content
 app.get("/api/content", async (req, res) => {
   try {
@@ -568,16 +611,16 @@ app.get("/api/content", async (req, res) => {
     });
 
     if (data) {
-      return res.json(data);
+      return res.json(migrateObsoleteIdentities(data));
     }
     
     // Fallback if doc doesn't exist in Firestore
     if (fs.existsSync(CONTENT_FILE)) {
       const localData = fs.readFileSync(CONTENT_FILE, "utf8");
-      return res.json(JSON.parse(localData));
+      return res.json(migrateObsoleteIdentities(JSON.parse(localData)));
     }
     
-    res.json(DEFAULT_CONTENT);
+    res.json(migrateObsoleteIdentities(DEFAULT_CONTENT));
   } catch (err: any) {
     const isNotFound = err.message?.includes("NOT_FOUND") || err.code === 5 || err.message?.includes("database not found") || err.message?.includes("unavailable");
     const isStandalone = !isFirestoreAvailable || err.isFirestoreUnavailable;
@@ -594,9 +637,9 @@ app.get("/api/content", async (req, res) => {
     try {
       if (fs.existsSync(CONTENT_FILE)) {
         const localData = fs.readFileSync(CONTENT_FILE, "utf8");
-        return res.json(JSON.parse(localData));
+        return res.json(migrateObsoleteIdentities(JSON.parse(localData)));
       }
-      res.json(DEFAULT_CONTENT);
+      res.json(migrateObsoleteIdentities(DEFAULT_CONTENT));
     } catch (localErr: any) {
       res.status(500).json({ error: "Content loading failed", details: localErr.message });
     }
@@ -605,14 +648,16 @@ app.get("/api/content", async (req, res) => {
 
 // Save updated content
 app.post("/api/content", async (req, res) => {
-  const { password, content } = req.body;
+  const { password, content: rawContent } = req.body;
   if (!(await checkAdminPassword(password))) {
     return res.status(401).json({ error: "Unauthorized. Incorrect admin password." });
   }
 
-  if (!content) {
+  if (!rawContent) {
     return res.status(400).json({ error: "Missing updated content payload." });
   }
+
+  const content = migrateObsoleteIdentities(rawContent);
 
   // Always sync to local file for safety
   try {
@@ -704,14 +749,22 @@ app.post("/api/submissions", async (req, res) => {
   } catch (err: any) {
     // Local fallback for submissions
     try {
-      const submissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
-      submissions.push({ ...newSubmission, id: `local_${Date.now()}` });
+      let submissions: any[] = [];
+      if (fs.existsSync(SUBMISSIONS_FILE)) {
+        try {
+          submissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
+        } catch (e) {
+          console.error("[STORAGE] Invalid local submissions JSON, resetting:", e);
+        }
+      }
+      const fallbackSubmission = { ...newSubmission, id: `local_${Date.now()}` };
+      submissions.push(fallbackSubmission);
       fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(submissions, null, 2), "utf8");
       
       if (isFirestoreAvailable) {
          console.warn("[FIREBASE] Submission Firestore save failed, using local fallback:", err.message);
       }
-      res.json({ success: true, message: "Submission received (offline mode enabled)!", localOnly: true });
+      res.json({ success: true, message: "Submission received (offline mode enabled)!", id: fallbackSubmission.id, localOnly: true });
     } catch (localErr: any) {
       res.status(500).json({ error: "Total submission failure", details: localErr.message });
     }
@@ -757,13 +810,9 @@ app.get("/api/submissions", async (req, res) => {
     if (fs.existsSync(SUBMISSIONS_FILE)) {
       try {
         const localSubmissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
-        // Combine them if needed, or just append. For simple fallback, we just prefer cloud if matches exist, 
-        // but if cloud failed, we use local.
         if (submissions.length === 0) {
           submissions = localSubmissions;
         } else {
-          // Add local ones that aren't in cloud (though cloud is usually newer)
-          // For simplicity in this app, we'll just show both if we pulled from cloud successfully
           submissions = [...submissions, ...localSubmissions].sort((a, b) => 
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           );
@@ -788,12 +837,234 @@ app.delete("/api/submissions/:id", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized access denied." });
   }
 
+  let deletedLocal = false;
+  let deletedFirestore = false;
+  let firestoreError = null;
+
+  // 1. Try deleting from the local fallback file first
+  if (fs.existsSync(SUBMISSIONS_FILE)) {
+    try {
+      const localSubmissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
+      const filtered = localSubmissions.filter((sub: any) => sub.id !== id);
+      if (filtered.length !== localSubmissions.length) {
+        fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(filtered, null, 2), "utf8");
+        deletedLocal = true;
+      }
+    } catch (e: any) {
+      console.error("[STORAGE] Local submission delete failed:", e);
+    }
+  }
+
+  // 2. Try deleting from Firestore if available and not a local ID
+  if (isFirestoreAvailable && submissionsColl && !id.startsWith("local_")) {
+    try {
+      const { deleteDoc: clientDeleteDoc } = await import('firebase/firestore');
+      await clientDeleteDoc(clientDoc(submissionsColl, id));
+      deletedFirestore = true;
+    } catch (err: any) {
+      console.warn("[FIREBASE] Firestore submission delete failed:", err.message);
+      firestoreError = err.message;
+    }
+  }
+
+  if (deletedLocal || deletedFirestore || id.startsWith("local_")) {
+    return res.json({ success: true, message: "Submission deleted successfully." });
+  }
+
+  if (firestoreError) {
+    return res.status(500).json({ error: "Failed to delete from Firestore", details: firestoreError });
+  }
+
+  return res.json({ success: true, message: "Submission removed." });
+});
+
+// Create an order
+app.post("/api/orders", async (req, res) => {
+  const orderData = req.body;
+
+  if (!orderData || !orderData.orderNo) {
+    return res.status(400).json({ error: "Missing order information." });
+  }
+
+  const newOrder = {
+    ...orderData,
+    createdAt: orderData.createdAt || new Date().toISOString()
+  };
+
   try {
-    const { deleteDoc: clientDeleteDoc } = await import('firebase/firestore');
-    await clientDeleteDoc(clientDoc(submissionsColl, id));
-    res.json({ success: true, message: "Submission purged from Firestore." });
+    if (!isFirestoreAvailable || !db) throw new Error("Firestore not available");
+
+    try {
+      const firebaseOrder = {
+        ...newOrder,
+        timestamp: clientServerTimestamp()
+      };
+      const docRef = await clientAddDoc(ordersColl, firebaseOrder);
+      res.json({ success: true, message: "Order logged successfully!", id: docRef.id });
+    } catch (err: any) {
+      console.warn("[FIREBASE] Firestore order write failed, trying fallback:", err.message);
+      throw err;
+    }
   } catch (err: any) {
-    res.status(500).json({ error: "Failed to process purge in Firestore", details: err.message });
+    // Local fallback for orders
+    try {
+      let orders: any[] = [];
+      if (fs.existsSync(ORDERS_FILE)) {
+        try {
+          orders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8") || "[]");
+        } catch (e) {
+          console.error("[STORAGE] Invalid local orders JSON, resetting:", e);
+        }
+      }
+      const localOrder = { ...newOrder, id: `local_${orderData.orderNo || Date.now()}` };
+      orders.push(localOrder);
+      fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
+      
+      res.json({ success: true, message: "Order recorded successfully (offline mode enabled)!", id: localOrder.id, localOnly: true });
+    } catch (localErr: any) {
+      res.status(500).json({ error: "Total order logging failure", details: localErr.message });
+    }
+  }
+});
+
+// Fetch orders (password protected)
+app.get("/api/orders", async (req, res) => {
+  const password = req.query.password as string;
+
+  if (!(await checkAdminPassword(password))) {
+    return res.status(401).json({ error: "Unauthorized access denied." });
+  }
+
+  try {
+    let orders: any[] = [];
+
+    if (isFirestoreAvailable && ordersColl) {
+      try {
+        const { query: clientQuery, orderBy: clientOrderBy, getDocs: clientGetDocs } = await import('firebase/firestore');
+        const q = clientQuery(ordersColl, clientOrderBy("createdAt", "desc"));
+        const snapshot = await clientGetDocs(q);
+        orders = snapshot.docs.map(doc => {
+          const data = doc.data() as any;
+          return {
+            id: doc.id,
+            ...data
+          };
+        });
+      } catch (firestoreErr) {
+        console.warn("[FIREBASE] Orders fetch failed, checking local fallback:", firestoreErr instanceof Error ? firestoreErr.message : String(firestoreErr));
+      }
+    }
+
+    // Merge or fallback to local orders
+    if (fs.existsSync(ORDERS_FILE)) {
+      try {
+        const localOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8") || "[]");
+        if (orders.length === 0) {
+          orders = localOrders;
+        } else {
+          const seenNos = new Set(orders.map(o => o.orderNo));
+          const uniqueLocals = localOrders.filter((o: any) => !seenNos.has(o.orderNo));
+          orders = [...orders, ...uniqueLocals];
+        }
+      } catch (e) {
+        console.error("[STORAGE] Local orders read failed:", e);
+      }
+    }
+
+    // Sort by date desc
+    orders.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+    res.json(orders);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to load orders", details: err.message });
+  }
+});
+
+// Update an order (admin access / transaction update)
+app.patch("/api/orders/:id", async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  let updatedLocal = false;
+  let updatedFirestore = false;
+  let firestoreError = null;
+
+  // 1. Try updating local fallback file
+  if (fs.existsSync(ORDERS_FILE)) {
+    try {
+      const localOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8") || "[]");
+      const index = localOrders.findIndex((o: any) => o.id === id || o.orderNo === id);
+      if (index !== -1) {
+        localOrders[index] = { ...localOrders[index], ...updates };
+        fs.writeFileSync(ORDERS_FILE, JSON.stringify(localOrders, null, 2), "utf8");
+        updatedLocal = true;
+      }
+    } catch (e) {
+      console.error("[STORAGE] Local order update failed:", e);
+    }
+  }
+
+  // 2. Try updating in Firestore
+  if (isFirestoreAvailable && ordersColl && !id.startsWith("local_")) {
+    try {
+      const { updateDoc: clientUpdateDoc } = await import('firebase/firestore');
+      await clientUpdateDoc(clientDoc(ordersColl, id), updates);
+      updatedFirestore = true;
+    } catch (err: any) {
+      console.warn("[FIREBASE] Firestore order update failed:", err.message);
+      firestoreError = err.message;
+    }
+  }
+
+  if (updatedLocal || updatedFirestore || id.startsWith("local_")) {
+    res.json({ success: true, message: "Order updated successfully." });
+  } else if (firestoreError) {
+    res.status(500).json({ error: "Failed to update order in Firestore", details: firestoreError });
+  } else {
+    res.json({ success: true, message: "Order update processed." });
+  }
+});
+
+// Delete an order (admin access)
+app.delete("/api/orders/:id", async (req, res) => {
+  const { id } = req.params;
+
+  let deletedLocal = false;
+  let deletedFirestore = false;
+  let firestoreError = null;
+
+  // 1. Try deleting from local fallback
+  if (fs.existsSync(ORDERS_FILE)) {
+    try {
+      const localOrders = JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8") || "[]");
+      const filtered = localOrders.filter((o: any) => o.id !== id && o.orderNo !== id);
+      if (filtered.length !== localOrders.length) {
+        fs.writeFileSync(ORDERS_FILE, JSON.stringify(filtered, null, 2), "utf8");
+        deletedLocal = true;
+      }
+    } catch (e) {
+      console.error("[STORAGE] Local order deletion failed:", e);
+    }
+  }
+
+  // 2. Try deleting from Firestore
+  if (isFirestoreAvailable && ordersColl && !id.startsWith("local_")) {
+    try {
+      const { deleteDoc: clientDeleteDoc } = await import('firebase/firestore');
+      await clientDeleteDoc(clientDoc(ordersColl, id));
+      deletedFirestore = true;
+    } catch (err: any) {
+      console.warn("[FIREBASE] Firestore order deletion failed:", err.message);
+      firestoreError = err.message;
+    }
+  }
+
+  if (deletedLocal || deletedFirestore || id.startsWith("local_")) {
+    res.json({ success: true, message: "Order deleted successfully." });
+  } else if (firestoreError) {
+    res.status(500).json({ error: "Failed to delete order from Firestore", details: firestoreError });
+  } else {
+    res.json({ success: true, message: "Order removed." });
   }
 });
 
@@ -1048,7 +1319,14 @@ app.post("/api/book-dr-fid", async (req, res) => {
         };
         await clientAddDoc(submissionsColl, firebaseSubmission);
       } else {
-        const submissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
+        let submissions: any[] = [];
+        if (fs.existsSync(SUBMISSIONS_FILE)) {
+          try {
+            submissions = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, "utf8") || "[]");
+          } catch (jsonErr) {
+            console.error("[STORAGE] Invalid local submissions JSON for booking:", jsonErr);
+          }
+        }
         submissions.push({
           timestamp: new Date().toISOString(),
           formType: "booking_dr_fid",

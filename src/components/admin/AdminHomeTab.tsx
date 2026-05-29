@@ -249,10 +249,10 @@ export default function AdminHomeTab() {
                   defaultStructure={{ label: "", image: "" }}
                   itemType="Identity Aspect"
                   fallbackData={[
-                    { label: 'Holistic Wellness', image: 'https://images.unsplash.com/photo-1576089234411-497c62ca621e?auto=format&fit=crop&q=80&w=800' },
-                    { label: 'Integrative Therapy', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800' },
-                    { label: 'SPA Business Expert', image: 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&q=80&w=800' },
-                    { label: 'Women’s Health', image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800' }
+                    { label: 'Speaker', image: 'https://images.unsplash.com/photo-1576089234411-497c62ca621e?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Trainer', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Coach', image: 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&q=80&w=800' },
+                    { label: 'Therapist', image: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=800' }
                   ]}
                 />
               </div>

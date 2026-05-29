@@ -29,7 +29,8 @@ export default function Footer() {
                 <img 
                   src={branding.footerLogo1Url} 
                   alt="The Vagina Room" 
-                  className="h-16 w-auto object-contain mb-8"
+                  style={{ height: `${branding.footerLogo1Height || 64}px` }}
+                  className="max-h-24 md:max-h-none w-auto object-contain mb-8"
                   referrerPolicy="no-referrer"
                 />
               ) : (
@@ -167,7 +168,8 @@ export default function Footer() {
               <img 
                 src={branding.footerLogo2Url} 
                 alt="Emblem" 
-                className="h-8 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity"
+                style={{ height: `${branding.footerLogo2Height || 32}px` }}
+                className="max-h-12 md:max-h-none w-auto object-contain opacity-50 hover:opacity-100 transition-opacity"
                 referrerPolicy="no-referrer"
               />
             )}

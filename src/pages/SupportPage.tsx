@@ -121,7 +121,7 @@ export default function SupportPage() {
         {/* Closing Promise Section */}
         <section className="py-40 px-6 bg-brand-red text-white overflow-hidden relative">
           <div className="max-w-7xl mx-auto text-center relative z-10">
-             <h2 className="font-sans text-6xl md:text-[10rem] font-black mb-16 tracking-tighter leading-none uppercase">
+             <h2 className="font-sans text-5xl md:text-[8rem] font-black mb-16 tracking-tighter leading-none uppercase">
                <EditableText field="supportClosingHeading" fancyMode="darkBreak" />
              </h2>
              <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-70 mb-16">

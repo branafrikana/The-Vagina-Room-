@@ -55,8 +55,8 @@ export default function AdminProductsPanel() {
       [key]: value
     };
     
-    // Auto-sync WhatsApp link if in whatsapp mode and relevant fields changed
-    if (updatedProd.orderMethod === "whatsapp" && ["title", "price", "description", "currency"].includes(key)) {
+    // Auto-sync WhatsApp link if in whatsapp mode, regardless of which field changed
+    if (updatedProd.orderMethod === "whatsapp") {
       updatedProd.orderLink = generateWhatsAppLink(updatedProd);
     }
     
@@ -103,7 +103,14 @@ export default function AdminProductsPanel() {
     const phone = generalConfig.whatsappPhone || "2340000000000";
     const cleanPhone = phone.replace(/\D/g, '');
     
-    const message = `Hello Dr. FID, I would like to order the following preparation:\n\n*Product:* ${product.title}\n*Price:* ${product.currency}${product.price}\n\n${product.description}\n\nPlease confirm availability and payment details.`;
+    const defaultTemplate = "Hello Dr. FID, I would like to order the following preparation:\n\n*Product:* {title}\n*Price:* {price}\n\n{description}\n\nPlease confirm availability and payment details.";
+    const template = generalConfig.whatsappTemplate || defaultTemplate;
+    
+    const message = template
+      .replace("{title}", product.title)
+      .replace("{price}", `${product.currency}${product.price}`)
+      .replace("{description}", product.description);
+
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
 
@@ -258,6 +265,17 @@ export default function AdminProductsPanel() {
                       </div>
                     </>
                   )}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/40 block">WhatsApp Message Template</label>
+                    <textarea
+                      value={generalConfig.whatsappTemplate || ""}
+                      onChange={(e) => updateGeneral("whatsappTemplate", e.target.value)}
+                      rows={4}
+                      placeholder="Hello Dr. FID, I would like to order the following preparation:\n\n*Product:* {title}\n*Price:* {price}\n\n{description}"
+                      className="w-full bg-brand-black border border-white/10 text-white font-mono text-xs px-4 py-3 focus:border-brand-gold outline-none"
+                    />
+                    <p className="text-[9px] text-white/30 font-mono mt-1">Available placeholders: {"{title}"}, {"{price}"}, {"{description}"}</p>
+                  </div>
                 </div>
               );
             })()}

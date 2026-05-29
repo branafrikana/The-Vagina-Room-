@@ -15,7 +15,9 @@ import {
   CreditCard, 
   Info,
   ChevronRight,
-  Package
+  Package,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 import { WHATSAPP_TEMPLATES, sendWhatsAppMessage } from '../../lib/whatsapp';
 
@@ -35,6 +37,21 @@ export default function AdminOrdersPanel({ orders, onRefresh }: AdminOrdersPanel
     order.orderNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customer?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customer?.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Operational visibility status counts
+  const totalOrdersCount = orders.length;
+  const counts = orders.reduce(
+    (acc, order) => {
+      const status = (order.status || 'pending').toLowerCase();
+      if (status === 'pending') acc.pending++;
+      else if (status === 'confirmed') acc.confirmed++;
+      else if (status === 'shipped') acc.shipped++;
+      else if (status === 'delivered') acc.delivered++;
+      else acc.other++;
+      return acc;
+    },
+    { pending: 0, confirmed: 0, shipped: 0, delivered: 0, other: 0 }
   );
 
   const handleUpdateStatus = async (order: any, newStatus: string, notify = true) => {
@@ -147,6 +164,88 @@ export default function AdminOrdersPanel({ orders, onRefresh }: AdminOrdersPanel
 
   return (
     <div className="space-y-6">
+      {/* Operational Summary Header */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: "Pending",
+            count: counts.pending,
+            color: "text-white/60",
+            icon: Clock,
+            borderColor: "border-white/10",
+            hoverBorderColor: "group-hover:border-white/35",
+            iconColor: "text-white/40",
+            badgeColor: "bg-white/5 text-white/60",
+            glowColor: "group-hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]"
+          },
+          {
+            label: "Confirmed",
+            count: counts.confirmed,
+            color: "text-brand-gold",
+            icon: CheckCircle,
+            borderColor: "border-brand-gold/10",
+            hoverBorderColor: "group-hover:border-brand-gold/40",
+            iconColor: "text-brand-gold/50",
+            badgeColor: "bg-brand-gold/5 text-brand-gold",
+            glowColor: "group-hover:shadow-[0_0_15px_rgba(212,175,55,0.05)]"
+          },
+          {
+            label: "Shipped",
+            count: counts.shipped,
+            color: "text-blue-400",
+            icon: Truck,
+            borderColor: "border-blue-500/10",
+            hoverBorderColor: "group-hover:border-blue-500/40",
+            iconColor: "text-blue-400/50",
+            badgeColor: "bg-blue-500/5 text-blue-400",
+            glowColor: "group-hover:shadow-[0_0_15px_rgba(96,165,250,0.05)]"
+          },
+          {
+            label: "Delivered",
+            count: counts.delivered,
+            color: "text-emerald-400",
+            icon: Package,
+            borderColor: "border-emerald-500/10",
+            hoverBorderColor: "group-hover:border-emerald-500/40",
+            iconColor: "text-emerald-400/50",
+            badgeColor: "bg-emerald-500/5 text-emerald-400",
+            glowColor: "group-hover:shadow-[0_0_15px_rgba(52,211,153,0.05)]"
+          }
+        ].map((item, idx) => {
+          const IconComponent = item.icon;
+          return (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              whileHover={{ y: -2 }}
+              className={`group relative bg-[#0a0a0a]/60 border ${item.borderColor} ${item.hoverBorderColor} p-5 flex flex-col justify-between transition-all duration-300 ${item.glowColor}`}
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono tracking-widest text-[9px] uppercase text-white/40">
+                  {item.label} Orders
+                </span>
+                <IconComponent className={`w-4 h-4 ${item.iconColor} transition-colors group-hover:text-white duration-300`} />
+              </div>
+              <div className="mt-4 flex items-end justify-between">
+                <span className="font-serif text-3xl md:text-4xl font-light text-white tracking-tight">
+                  {item.count}
+                </span>
+                <span className={`px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider rounded ${item.badgeColor}`}>
+                  {totalOrdersCount > 0 
+                    ? `${Math.round((item.count / totalOrdersCount) * 100)}%`
+                    : '0%'
+                  }
+                </span>
+              </div>
+              {/* Gold/Brand accent line at bottom on hover */}
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-brand-gold/0 to-transparent group-hover:via-brand-gold/30 transition-all duration-500" />
+            </motion.div>
+          );
+        })}
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} />
