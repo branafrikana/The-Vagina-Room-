@@ -218,18 +218,37 @@ const useCloudinary = !!(
   process.env.CLOUDINARY_API_SECRET
 );
 
+const cloudinaryConfig = {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+};
+
 if (useCloudinary) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  });
+  cloudinary.config(cloudinaryConfig);
   console.log("[MEDIA] Cloudinary is configured and ready for file uploads.");
 } else {
-  console.log("[MEDIA] Cloudinary credentials not found. Falling back to local disk storage uploads.");
+  console.log("[MEDIA] CRITICAL: Cloudinary credentials missing. Images will ONLY be stored locally and will BREAK after server restart.");
 }
 
 // --- API Routes ---
+
+/**
+ * MEDIA STATUS: Reports if cloud storage (Cloudinary) and persistence (Firestore) are ready.
+ */
+app.get("/api/media/status", async (req, res) => {
+  res.json({
+    cloudinary: {
+      configured: useCloudinary,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME || "Not Set"
+    },
+    firestore: {
+      connected: isFirestoreAvailable,
+      databaseId: currentDbId || "(default)"
+    },
+    localAssets: fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR).filter(f => !f.startsWith('.')).length : 0
+  });
+});
 
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
@@ -1468,6 +1487,84 @@ app.post("/api/whatsapp/send", async (req, res) => {
   } catch (err: any) {
     console.error("[WHATSAPP API] Error sending message:", err);
     res.status(500).json({ error: "Failed to send WhatsApp message.", details: err.message });
+  }
+});
+
+/**
+ * MEDIA SYNC: Scans current content for local /uploads/ URLs and mirrors them to Cloudinary.
+ * This is crucial for cloud deployment (Render/Cloud Run) because local disk is ephemeral.
+ */
+app.post("/api/media/sync", async (req, res) => {
+  const { password } = req.body;
+  if (!(await checkAdminPassword(password))) {
+    return res.status(401).json({ error: "Unauthorized." });
+  }
+
+  if (!useCloudinary) {
+    return res.status(400).json({ error: "Cloudinary credentials (env vars) are missing." });
+  }
+
+  try {
+    const rawContent = await getLatestContent();
+    let migratedCount = 0;
+    
+    // Recursively traverse object and upload strings starting with /uploads/
+    const migrateAssets = async (obj: any): Promise<any> => {
+      if (typeof obj === "string") {
+        if (obj.startsWith("/uploads/")) {
+          const localPath = path.join(process.cwd(), "data", obj);
+          if (fs.existsSync(localPath)) {
+            try {
+              console.log(`[MEDIA SYNC] Mirroring: ${obj}`);
+              const result = await cloudinary.uploader.upload(localPath, {
+                folder: "thevaginaroom_migration",
+              });
+              migratedCount++;
+              return result.secure_url;
+            } catch (err: any) {
+              console.error(`[MEDIA SYNC] Failed to migrate ${obj}:`, err.message);
+              return obj; // Keep original on failure
+            }
+          }
+        }
+        return obj;
+      } else if (Array.isArray(obj)) {
+        return Promise.all(obj.map(item => migrateAssets(item)));
+      } else if (typeof obj === "object" && obj !== null) {
+        const newObj: any = {};
+        for (const key in obj) {
+          newObj[key] = await migrateAssets(obj[key]);
+        }
+        return newObj;
+      }
+      return obj;
+    };
+
+    console.log("[MEDIA SYNC] Starting global asset migration scan...");
+    const updatedContent = await migrateAssets(rawContent);
+    
+    if (migratedCount > 0) {
+      // Save updated content locally
+      fs.writeFileSync(CONTENT_FILE, JSON.stringify(updatedContent, null, 2), "utf8");
+      
+      // Update Firestore
+      if (isFirestoreAvailable && contentColl) {
+        await withFirestoreFallback(async (coll) => {
+          await clientSetDoc(clientDoc(coll, "global"), updatedContent, { merge: true });
+        });
+      }
+      
+      return res.json({ 
+        success: true, 
+        message: `Successfully mirrored ${migratedCount} assets to Cloudinary and updated database.`,
+        migratedCount 
+      });
+    }
+
+    res.json({ success: true, message: "Scan complete. No local assets required migration.", migratedCount: 0 });
+  } catch (err: any) {
+    console.error("[MEDIA SYNC] Critical sync failure:", err);
+    res.status(500).json({ error: "Synchronization engine error", details: err.message });
   }
 });
 

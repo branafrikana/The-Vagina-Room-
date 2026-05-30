@@ -2,24 +2,64 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow reads and writes for site configurations (accessed solely via the server-side API proxy)
+    // Helper functions for validation
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Site Content Validation
+    function isValidSiteContent(data) {
+      return data is map &&
+             (data.get('heroHeading', '') is string) &&
+             (data.get('heroSub', '') is string);
+    }
+
+    // Submission Validation
+    function isValidSubmission(data) {
+      return data is map &&
+             data.keys().hasAll(['timestamp', 'formType', 'data']) &&
+             data.formType is string &&
+             data.timestamp is string;
+    }
+
+    // Order Validation
+    function isValidOrder(data) {
+      return data is map &&
+             data.keys().hasAll(['orderNo', 'customer', 'items', 'status']) &&
+             data.orderNo is string &&
+             data.status is string;
+    }
+
+    // Catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global configurations (accessed via proxy)
     match /configs/{configId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isValidId(configId) && isValidSiteContent(incoming());
     }
 
-    // Allow reads and writes for admin management table
+    // Admin management
     match /admins/{uid} {
-      allow read, write: if true;
+      allow read, write: if isValidId(uid);
     }
 
-    // Allow reads and writes for form submissions
+    // Form submissions
     match /submissions/{subId} {
-      allow read, write: if true;
+      allow read, delete: if true; // In production, restrict to isAdmin() if you use Auth
+      allow create: if isValidId(subId) && isValidSubmission(incoming());
     }
 
-    // Allow reads and writes for orders
+    // Product orders
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow read, delete: if true; // In production, restrict to isAdmin()
+      allow create: if isValidId(orderId) && isValidOrder(incoming());
     }
   }
 }

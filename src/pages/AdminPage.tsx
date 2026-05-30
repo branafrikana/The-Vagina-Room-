@@ -404,6 +404,23 @@ function AdminMediaSyncPanel() {
   const [syncMsg, setSyncMsg] = useState("");
   const [migratedCount, setMigratedCount] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
+  const [health, setHealth] = useState<any>(null);
+
+  const fetchHealth = async () => {
+    try {
+      const res = await fetchWithApiBase("/api/media/status");
+      if (res.ok) {
+        setHealth(await res.json());
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchHealth();
+    // Refresh health every 30 seconds
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Deep scan for local /uploads/ images in content
   const countLocalImages = (obj: any): number => {
@@ -428,8 +445,11 @@ function AdminMediaSyncPanel() {
   ];
 
   const handleSync = async () => {
-    console.log("[ADMIN] Initiating Media Sync Process...");
-    
+    if (!health?.cloudinary?.configured) {
+      alert("Cloudinary is NOT configured. Please set CLOUDINARY_CLOUD_NAME, API_KEY, and API_SECRET in your environment variables first.");
+      return;
+    }
+
     if (!window.confirm(`This process will scan all site content for local images and migrate them to Cloudinary. Detected ${detectedCount} potential local assets. Continue?`)) return;
     
     setSyncStatus("syncing");
@@ -452,7 +472,6 @@ function AdminMediaSyncPanel() {
       });
       
       const data = await res.json();
-      console.log("[ADMIN] Sync API Response:", data);
       
       if (data.success) {
         setMigratedCount(data.migratedCount);
@@ -460,12 +479,12 @@ function AdminMediaSyncPanel() {
         await new Promise(r => setTimeout(r, 800));
         setSyncStatus("success");
         setSyncMsg(data.message || "Cloud persistence sync successfully completed.");
+        fetchHealth();
       } else {
         setSyncStatus("error");
         setSyncMsg(data.error || "Sync failed during cloud migration.");
       }
     } catch (err: any) {
-      console.error("[ADMIN] Sync process threw error:", err);
       setSyncStatus("error");
       setSyncMsg("Network error or server timeout during synchronization.");
     }
@@ -484,6 +503,28 @@ function AdminMediaSyncPanel() {
          Render and other cloud platforms do not persist local /uploads/ files after deployment. 
          This tool migrates any existing local images found in your content to Cloudinary, ensuring they remain valid and globally accessible.
        </p>
+
+       {/* System Health Indicators */}
+       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-lg mb-8">
+          <div className={`p-4 border rounded bg-black/20 ${health?.cloudinary?.configured ? "border-emerald-500/20" : "border-brand-red/30"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Cloudinary</span>
+              <div className={`w-2 h-2 rounded-full ${health?.cloudinary?.configured ? "bg-emerald-500" : "bg-brand-red animate-pulse"}`} />
+            </div>
+            <p className={`text-[11px] font-mono ${health?.cloudinary?.configured ? "text-emerald-400" : "text-brand-red"}`}>
+              {health?.cloudinary?.configured ? `CONFIGURED (${health.cloudinary.cloudName})` : "MISSING CREDENTIALS"}
+            </p>
+          </div>
+          <div className={`p-4 border rounded bg-black/20 ${health?.firestore?.connected ? "border-emerald-500/20" : "border-brand-red/30"}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Firestore DB</span>
+              <div className={`w-2 h-2 rounded-full ${health?.firestore?.connected ? "bg-emerald-500" : "bg-brand-red animate-pulse"}`} />
+            </div>
+            <p className={`text-[11px] font-mono ${health?.firestore?.connected ? "text-emerald-400" : "text-brand-red"}`}>
+              {health?.firestore?.connected ? `CONNECTED (${health.firestore.databaseId})` : "DATABASE ERROR"}
+            </p>
+          </div>
+       </div>
 
        {detectedCount > 0 && syncStatus === "idle" && (
          <div className="mb-8 px-6 py-3 bg-brand-gold/5 border border-brand-gold/20 rounded-full flex items-center gap-3">
@@ -528,16 +569,29 @@ function AdminMediaSyncPanel() {
          </div>
        ) : (
          <div className="space-y-4">
-           <button
-             onClick={handleSync}
-             className="group relative bg-brand-gold hover:bg-white text-brand-black px-12 py-5 text-xs font-black uppercase tracking-widest transition-all shadow-2xl flex items-center gap-2 cursor-pointer overflow-hidden"
-           >
-             <span className="relative z-10 flex items-center gap-2">
-               <Sparkles size={14} className="group-hover:scale-125 transition-transform" />
-               Build Cloud Mirror
-             </span>
-             <div className="absolute inset-0 bg-white/20 translate-y-full hover:translate-y-0 transition-transform duration-300" />
-           </button>
+           {(!health || health.cloudinary.configured) ? (
+             <button
+               onClick={handleSync}
+               className="group relative bg-brand-gold hover:bg-white text-brand-black px-12 py-5 text-xs font-black uppercase tracking-widest transition-all shadow-2xl flex items-center gap-2 cursor-pointer overflow-hidden"
+             >
+               <span className="relative z-10 flex items-center gap-2">
+                 <Sparkles size={14} className="group-hover:scale-125 transition-transform" />
+                 Build Cloud Mirror
+               </span>
+               <div className="absolute inset-0 bg-white/20 translate-y-full hover:translate-y-0 transition-transform duration-300" />
+             </button>
+           ) : (
+             <div className="p-6 border border-brand-red/30 bg-brand-red/10 rounded">
+                <p className="text-xs font-black uppercase text-brand-red mb-2">Cloud Migration Gateway Restricted</p>
+                <p className="text-[10px] text-white/60 mb-4">You must configure Cloudinary environment variables before you can mirror assets.</p>
+                <button 
+                  onClick={() => alert("Please check your Render/Local .env for CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET")}
+                  className="px-6 py-3 border border-brand-red text-brand-red text-[9px] font-black uppercase tracking-widest hover:bg-brand-red hover:text-white transition-all cursor-pointer"
+                >
+                  View Setup Instructions
+                </button>
+             </div>
+           )}
            
            {detectedCount === 0 && syncStatus === "idle" && (
              <p className="text-[9px] uppercase font-black tracking-widest text-white/20 italic">

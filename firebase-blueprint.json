@@ -108,6 +108,33 @@
         "role": { "type": "string", "enum": ["superadmin", "editor"] }
       },
       "required": ["email", "role"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Form submissions from contact or partnership forms",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "formType": { "type": "string" },
+        "data": { "type": "object" }
+      },
+      "required": ["timestamp", "formType", "data"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Product orders from the checkout page",
+      "type": "object",
+      "properties": {
+        "orderNo": { "type": "string" },
+        "customer": { "type": "object" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orderNo", "customer", "items", "subtotal", "deliveryFee", "grandTotal", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -118,6 +145,14 @@
     "admins/{uid}": {
       "schema": "Admin",
       "description": "Administrative users table"
+    },
+    "submissions/{subId}": {
+      "schema": "Submission",
+      "description": "Form submissions collection"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Product orders collection"
     }
   }
 }
